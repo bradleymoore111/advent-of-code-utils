@@ -59,11 +59,7 @@ function memoize(fn) {
 
     return function() {
         const key = [...arguments].join('M'); // Hopefully this isn't ever a problem.
-        if (!memMap.has(key)) {
-            memMap.set(key, fn(...arguments));
-        } else {
-            "Cache hit.";
-        }
+        if (!memMap.has(key)) memMap.set(key, fn(...arguments))
         return memMap.get(key);
     };
 }
