@@ -1,5 +1,9 @@
-var oldSplit = String.prototype.split;
+logging = true;
+function log() {
+    if (logging) console.log(...arguments);
+}
 
+var oldSplit = String.prototype.split;
 String.prototype.split = function(a) {
     if (a == null) {
         return oldSplit.bind(this)(/\s+/g);
@@ -29,15 +33,45 @@ Array.prototype.min = function() {
     return this.reduce((accum, curr) => Math.min(accum, curr), Infinity);
 }
 
+Array.prototype.sum = function() {
+    return this.reduce((accum, curr) => accum + curr, 0);
+}
+
 const oldMapEntries = Map.prototype.entries;
 Map.prototype.entries = function() {
     return [...(oldMapEntries.bind(this)())];
 }
 
+String.prototype.every = function(callback) {
+    return this.split('').every(callback);
+}
+
+String.prototype.all = String.prototype.every;
+Array.prototype.all = Array.prototype.every;
+
+String.prototype.replaceAt = function(index, replacement) {
+    return this.substring(0, index) + replacement + this.substring(index + replacement.length);
+}
+
+function memoize(fn) {
+    // Assume they're always primitives, strictly typed, and stringable.
+    const memMap = new Map();
+
+    return function() {
+        const key = [...arguments].join('M'); // Hopefully this isn't ever a problem.
+        if (!memMap.has(key)) {
+            memMap.set(key, fn(...arguments));
+        } else {
+            "Cache hit.";
+        }
+        return memMap.get(key);
+    };
+}
+
 var infcounter = 0;
 
 function infc() {
-    return infcounter++ < 1e8;
+    return infcounter++ < 1e5;
 }
 
 function actualdata() {
@@ -100,8 +134,33 @@ class Grid {
         this._grid[this.height - y - 1][x] = v;
     }
 
+    insertRow(yIndex, value) {
+        let a = [];
+        for (let i=0; i<this.width; i++) {
+            a.push(value ?? null);
+        }
+        // NO MINUS ONE strictly because we're going in opposite direction or something idk.
+        this._grid.splice(this.height - yIndex, 0, a);
+    }
+
+    insertCol(xIndex, value) {
+        for (let i=0; i<this.height; i++) {
+            this._grid[i].splice(xIndex, 0, value ?? null);
+        }
+    }
+
+    removeRow(yIndex) {
+        this._grid.splice(this.height - yIndex - 1, 1);
+    }
+
+    removeCol(xIndex) {
+        for (let i=0; i<this.height; i++) {
+            this._grid[i].splice(xIndex, 1);
+        }
+    }
+
     dump() {
-        let s = '';
+        let s = `Grid(${this.width} x ${this.height})\n`;
         for (let y=this.height - 1; y>=0; y--) {
             for (let x=0; x<this.width; x++) {
                 s += this.cell(x, y);
