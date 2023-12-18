@@ -1,28 +1,68 @@
 <head>
     <title>Yup.</title>
-    <script src="all.js"></script>
+    <script src="utils.js"></script>
     <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
         textarea {
             float: left;
-        }        
-        div {
+        }
+        .left div {
             width: 100%;
             height: 80px;
         }
+        .row {
+            display: flex;
+            flex-grow: 1;
+        }
+        .left {
+            width: 40%;
+        }
+
+        .right {
+            width: 60%;
+            position: relative;
+            border: 3px solid black;
+        }
+
+        #container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
     </style>
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs/editor/editor.main.min.css">
+    <script src="https://unpkg.com/rxjs@7.8.1/dist/bundles/rxjs.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.26.1/min/vs/loader.min.js"></script>
+    <script src="monaco.js"></script>
 </head>
 <body>
     <h1>Yuuuuuuuuuup.</h1>
-    <h2>Sample datas</h2>
-    <div>
-        <textarea id="sampledata1" rows="4" cols="50"></textarea>
-        <textarea id="sampledata2" rows="4" cols="50"></textarea>
-        <textarea id="sampledata3" rows="4" cols="50"></textarea>
-        <textarea id="sampledata4" rows="4" cols="50"></textarea>
-    </div>
-    <br>
-    <h2>Actual data</h2>
-    <div>
-        <textarea id="actualdata" rows="4" cols="50"></textarea>
+    <div class="row">
+        <div class="left">
+            <h2>Sample datas</h2>
+            <div>
+                <textarea id="sampledata1" rows="4" cols="50"></textarea>
+                <textarea id="sampledata2" rows="4" cols="50"></textarea>
+                <textarea id="sampledata3" rows="4" cols="50"></textarea>
+                <textarea id="sampledata4" rows="4" cols="50"></textarea>
+            </div>
+            <br>
+            <h2>Actual data</h2>
+            <div>
+                <textarea id="actualdata" rows="4" cols="50"></textarea>
+            </div>
+        </div>
+        <div class="right">
+            <div id="container"></div>
+        </div>
     </div>
 </body>

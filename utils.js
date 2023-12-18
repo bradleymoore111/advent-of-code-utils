@@ -156,6 +156,7 @@ class Grid {
     }
 
     dump() {
+        if (!logging) return;
         let s = `Grid(${this.width} x ${this.height})\n`;
         for (let y=this.height - 1; y>=0; y--) {
             for (let x=0; x<this.width; x++) {
@@ -165,6 +166,19 @@ class Grid {
         }
 
         console.log(s);
+    }
+
+    row(n) {
+        return [...this._grid[this.height - n - 1]];
+    }
+
+    col(n) {
+        // console.log("   Getting col:", n);
+        var vals = [];
+        for (let y=0; y<this.height; y++) {
+            vals.push(this.cell(n, y));
+        }
+        return vals;
     }
 
     [Symbol.iterator] = function() {
