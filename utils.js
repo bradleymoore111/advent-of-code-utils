@@ -3,6 +3,18 @@ function log() {
     if (logging) console.log(...arguments);
 }
 
+function actualdata() {
+    infcounter = 0;
+    return document.getElementById("actualdata").value.trim();
+}
+
+function sampledata(n) {
+    infcounter = 0;
+    n ??= 1;
+
+    return document.getElementById("sampledata" + n).value.trim();
+}
+
 var oldSplit = String.prototype.split;
 String.prototype.split = function(a) {
     if (a == null) {
@@ -11,6 +23,10 @@ String.prototype.split = function(a) {
 
     return oldSplit.bind(this)(a);
 };
+
+String.prototype.numSplit = function(a) {
+    return this.split(a).map(e => +e);
+}
 
 Array.prototype.last = function() {
     return this[this.length-1];
@@ -25,6 +41,47 @@ Array.prototype.plus = function(other) {
     return a;
 }
 
+Array.prototype.minus = function(other) {
+    // Shallow copy!
+    const a = [];
+    for (let i=0; i<this.length && i<other.length; i++) {
+        a.push(this[i] - other[i]);
+    }
+    return a;
+}
+
+Array.prototype.dot = function(other) {
+    var sum = 0;
+    for (let i=0; i<this.length && i<other.length; i++) {
+        sum += this[i]*other[i];
+    }
+    return sum;
+}
+
+Array.prototype.cross = function(other) {
+    if (this.length !== 2 || other.length !== 2) {
+        throw "Not implemented error.";
+    }
+
+    return this[0] * other[1] - this[1] * other[0];
+}
+
+Array.prototype.times = function(n) {
+    const a = [];
+    for (let i=0; i<this.length; i++) {
+        a.push(this[i] * n);
+    }
+    return a;
+}
+
+Array.prototype.equals = function(other) {
+    if (this.length !== other.length) return false;
+    for (let i=0; i<this.length; i++) {
+        if (this[i] !== other[i]) return false;
+    }
+    return true;
+}
+
 Array.prototype.max = function() {
     return this.reduce((accum, curr) => Math.max(accum, curr), -Infinity);
 }
@@ -37,9 +94,37 @@ Array.prototype.sum = function() {
     return this.reduce((accum, curr) => accum + curr, 0);
 }
 
+Object.defineProperty(Array.prototype, "x", {
+    get: function x() {
+        return this[0];
+    },
+    set: function x(val) {
+        this[0] = val;
+    }
+});
+
+Object.defineProperty(Array.prototype, "y", {
+    get: function y() {
+        return this[1];
+    },
+    set: function y(val) {
+        this[1] = val;
+    }
+});
+
 const oldMapEntries = Map.prototype.entries;
 Map.prototype.entries = function() {
     return [...(oldMapEntries.bind(this)())];
+}
+
+const oldMapValues = Map.prototype.values;
+Map.prototype.values = function() {
+    return [...(oldMapValues.bind(this)())];
+}
+
+const oldMapKeys = Map.prototype.keys;
+Map.prototype.keys = function() {
+    return [...(oldMapKeys.bind(this)())];
 }
 
 String.prototype.every = function(callback) {
@@ -64,20 +149,34 @@ function memoize(fn) {
     };
 }
 
+function hashPoint(p, y) {
+    if (Array.isArray(p)) {
+        return `${p[0]}&${p[1]}`;
+    } else if (typeof p === 'object') {
+        return `${p.x}&${p.y}`;
+    } else {
+        return `${p}&${y}`;
+    }
+}
+
+function unhashPoint(p) {
+    const parts = p.split('&');
+    return {
+        x: +parts[0],
+        y: +parts[1],
+    };
+}
+
+function unhashArrayPoint(p) {
+    p = unhashPoint(p);
+    return [p.x, p.y];
+}
+
 var infcounter = 0;
 
 function infc() {
-    return infcounter++ < 1e5;
-}
-
-function actualdata() {
-    return document.getElementById("actualdata").value.trim();
-}
-
-function sampledata(n) {
-    n ??= 1;
-
-    return document.getElementById("sampledata" + n).value.trim();
+    if (infcounter++ < 1e5) return true;
+    throw "infc failed.";
 }
 
 class Grid {
@@ -156,16 +255,19 @@ class Grid {
     }
 
     dump() {
-        if (!logging) return;
-        let s = `Grid(${this.width} x ${this.height})\n`;
+        log(`Grid(${this.width} x ${this.height})\n${this.toString()}`);
+    }
+
+    toString() {
+        const rows = [];
         for (let y=this.height - 1; y>=0; y--) {
+            let s = '';
             for (let x=0; x<this.width; x++) {
                 s += this.cell(x, y);
             }
-            s += '\n';
+            rows.push(s);
         }
-
-        console.log(s);
+        return rows.join('\n');
     }
 
     row(n) {
@@ -230,3 +332,4 @@ class Grid {
         }
     }
 }
+
