@@ -1,11 +1,17 @@
 logging = true;
+const oldLog = console.log
 function log() {
-    if (logging) console.log(...arguments);
+    if (logging) oldLog(...arguments);
 }
+console.log = log;
 
 function actualdata() {
     infcounter = 0;
     return document.getElementById("actualdata").value.trim();
+}
+
+function clone(a) {
+    return JSON.parse(JSON.stringify(a));
 }
 
 function sampledata(n) {
@@ -14,6 +20,7 @@ function sampledata(n) {
 
     return document.getElementById("sampledata" + n).value.trim();
 }
+
 
 var oldSplit = String.prototype.split;
 String.prototype.split = function(a) {
@@ -32,13 +39,47 @@ Array.prototype.last = function() {
     return this[this.length-1];
 }
 
+function pointToArray(px, py) {
+    if (Array.isArray(px)) {
+        return px;
+    }
+
+    if (typeof px === 'object') {
+        return [px.x, px.y];
+    }
+
+    return [px, py];
+}
+
+function pointToObject(px, py) {
+    if (Array.isArray(px)) {
+        return {x: px[0], y: px[1]};
+    }
+
+    if (typeof px === 'object') {
+        return px;
+    }
+
+    return [px, py];
+}
+
 Array.prototype.plus = function(other) {
     // Shallow copy!
+    other = pointToArray(other);
     const a = [];
     for (let i=0; i<this.length && i<other.length; i++) {
         a.push(this[i] + other[i]);
     }
     return a;
+}
+
+Object.prototype.plus = function(other) {
+    other = pointToObject(other);
+    const out = {};
+    for (const key of Object.keys(other)) {
+        out[key] = this[key] + other[key];
+    }
+    return out;
 }
 
 Array.prototype.minus = function(other) {
@@ -50,12 +91,79 @@ Array.prototype.minus = function(other) {
     return a;
 }
 
+Object.prototype.minus = function(other) {
+    // Assume x/y :P
+    return {x: this.x - other.x, y: this.y - other.y};
+}
+
 Array.prototype.dot = function(other) {
     var sum = 0;
     for (let i=0; i<this.length && i<other.length; i++) {
         sum += this[i]*other[i];
     }
     return sum;
+}
+
+const oldSetAdd = Set.prototype.add;
+Set.prototype.add = function(val) {
+    if (typeof val.x === 'number' || Array.isArray(val)) {
+        val = `${val.x},${val.y}`;
+    }
+    
+    return oldSetAdd.bind(this)(val);
+}
+
+const oldSetHas = Set.prototype.has;
+Set.prototype.has = function(val) {
+    if (typeof val.x === 'number' || Array.isArray(val)) {
+        val = `${val.x},${val.y}`;
+    }
+    
+    return oldSetHas.bind(this)(val);
+}
+
+const oldSetGet = Set.prototype.get;
+Set.prototype.get = function(val) {
+    if (typeof val.x === 'number' || Array.isArray(val)) {
+        val = `${val.x},${val.y}`;
+    }
+    
+    return oldSetGet.bind(this)(val);
+}
+
+function spreadSet(s) {
+    return [...s].map(e => {
+        let r = /(-?[0-9]+),(-?[0-9]+)/;
+        let matches = r.exec(e);
+        if (!matches) return e;
+
+        return [+matches[1], +matches[2]];
+    });
+}
+
+// Suppose low/high = [0, 200]. We should log whenever i 
+function* rangeProgress(low, high, percent = 0.01) {
+    if (high === undefined) {
+        high = low;
+        low = 0;
+    }
+
+    let onePercent = (high - low) * percent;
+
+    let lastLogged = low;
+    for (i=low; i<high; i++) {
+        yield i;
+
+        // Side effects?
+        // log(i, lastLogged, onePercent);
+        if ((i - lastLogged) > onePercent) {
+            let oldLogging = logging;
+            logging = true;
+            log("Progress:", i, "/", high);
+            logging = oldLogging;
+            lastLogged = i;
+        }
+    }
 }
 
 Array.prototype.cross = function(other) {
@@ -75,6 +183,7 @@ Array.prototype.times = function(n) {
 }
 
 Array.prototype.equals = function(other) {
+    other = pointToArray(other);
     if (this.length !== other.length) return false;
     for (let i=0; i<this.length; i++) {
         if (this[i] !== other[i]) return false;
@@ -213,6 +322,25 @@ class Grid {
         const row = this._grid[this.height - y - 1];
         if (!row) return undefined;
         return row[x];
+    }
+
+    isInBounds(x, y) {
+        if (Array.isArray(x)) {
+            y = x[1];
+            x = x[0];
+        }
+        if (typeof x === 'object') {
+            y = x.y;
+            x = x.x;
+        }
+
+        if (this.width === 0 || this.height === 0) return true;
+
+        return x >= 0 && x < this.width && y >= 0 && y < this.height;
+    }
+
+    isOutOfBounds(x, y) {
+        return !this.isInBounds(x, y);
     }
 
     setCell(x, y, v) {
