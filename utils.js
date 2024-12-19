@@ -131,6 +131,42 @@ Set.prototype.get = function(val) {
     return oldSetGet.bind(this)(val);
 }
 
+const oldSetDelete = Set.prototype.delete;
+Set.prototype.delete = function(val) {
+    if (typeof val.x === 'number' || Array.isArray(val)) {
+        val = `${val.x},${val.y}`;
+    }
+
+    return oldSetDelete.bind(this)(val);
+}
+
+const oldMapSet = Map.prototype.set;
+Map.prototype.set = function(key, val) {
+    if (typeof key.x === 'number' || Array.isArray(key)) {
+        key = `${key.x},${key.y}`;
+    }
+
+    return oldMapSet.bind(this)(key, val);
+}
+
+const oldMapHas = Map.prototype.has;
+Map.prototype.has = function(val) {
+    if (typeof val.x === 'number' || Array.isArray(val)) {
+        val = `${val.x},${val.y}`;
+    }
+
+    return oldMapHas.bind(this)(val);
+}
+
+const oldMapGet = Map.prototype.get;
+Map.prototype.get = function(val) {
+    if (typeof val.x === 'number' || Array.isArray(val)) {
+        val = `${val.x},${val.y}`;
+    }
+
+    return oldMapGet.bind(this)(val);
+}
+
 function spreadSet(s) {
     return [...s].map(e => {
         let r = /(-?[0-9]+),(-?[0-9]+)/;
@@ -151,15 +187,17 @@ function* rangeProgress(low, high, percent = 0.01) {
     let onePercent = (high - low) * percent;
 
     let lastLogged = low;
+    let lastLoggedTime = performance.now();
     for (i=low; i<high; i++) {
         yield i;
 
         // Side effects?
         // log(i, lastLogged, onePercent);
-        if ((i - lastLogged) > onePercent) {
+        if ((i - lastLogged) > onePercent || (performance.now() - lastLoggedTime > 5000)) {
             let oldLogging = logging;
+            lastLoggedTime = performance.now();
             logging = true;
-            log("Progress:", i, "/", high);
+            log("Progress:", i, "/", high, `${Math.round(1000 * i / high) / 10}%`);
             logging = oldLogging;
             lastLogged = i;
         }
@@ -201,6 +239,14 @@ Array.prototype.min = function() {
 
 Array.prototype.sum = function() {
     return this.reduce((accum, curr) => accum + curr, 0);
+}
+
+Array.prototype.product = function() {
+    return this.reduce((accum, curr) => accum * curr, 1);
+}
+
+function posimod(n, m) {
+    return ((n % m) + m) % m;
 }
 
 Object.defineProperty(Array.prototype, "x", {
@@ -288,6 +334,93 @@ function infc() {
     throw "infc failed.";
 }
 
+class WeightedDirectedGraph {
+    constructor() {
+        this.v = new Map();
+    }
+
+    add(identifier) {
+        if (this.has(identifier)) return;
+        this.v.set(identifier, new Map());
+    }
+
+    has(identifier) {
+        return this.v.has(identifier);
+    }
+
+    connect(from, to, weight = 1) {
+        if (!this.has(from)) {
+            this.add(from);
+        }
+
+        if (!this.has(to)) {
+            this.add(to);
+        }
+
+        this.v.get(from).set(to, weight);
+    }
+
+    get(from) {
+        if (!this.has(from)) return new Map();
+
+        return this.v.get(from);
+    }
+
+    dump() {
+        log("Graph with", this.v.size, "v.");
+        for (const [v, edges] of this.v.entries()) {
+            log(v);
+            for (const [v, weight] of edges.entries()) {
+                log(" ", v, ':', weight);
+            }
+        }
+    }
+    
+    get vertexes() {
+        return this.v.keys();
+    }
+}
+
+// From wikipedia
+function Dijkstra(graph, source) {
+    const dist = new Map();
+    const prevs = new Map();
+    const nodes = new Map();
+    const queue = new FibonacciHeap();
+
+    for (const v of graph.vertexes) {
+        dist.set(v, Infinity);
+        prevs.set(v, null);
+        nodes.set(v, queue.insert(Infinity, v));
+    }
+    dist.set(source, 0);
+    queue.decreaseKey(nodes.get(source), 0);
+
+    const length = queue.size();
+
+    for (const i of rangeProgress(length)) {
+        // Sort it _backwards_, so we can pop off the min.
+        const u = queue.pop().value;
+        
+        for (const [v, weight] of graph.get(u).entries()) {
+            const alt = dist.get(u) + weight;
+            if (alt < dist.get(v)) {
+                dist.set(v, alt);
+                queue.decreaseKey(nodes.get(v), alt);
+                prevs.set(v, [u]);
+            } else if (alt === dist.get(v)) {
+                prevs.set(v, prevs.get(v) ?? []);
+                prevs.get(v).push(u);
+            }
+        }
+    }
+
+    return {dist, prevs};
+}
+
+// Good defaults.
+var Graph = WeightedDirectedGraph;
+
 class Grid {
     constructor(input) {
         this._grid = (input ?? '').split('\n').map(e => e.split(''));
@@ -360,7 +493,7 @@ class Grid {
     insertRow(yIndex, value) {
         let a = [];
         for (let i=0; i<this.width; i++) {
-            a.push(value ?? null);
+            a.push(value ?? ' ');
         }
         // NO MINUS ONE strictly because we're going in opposite direction or something idk.
         this._grid.splice(this.height - yIndex, 0, a);
@@ -368,7 +501,7 @@ class Grid {
 
     insertCol(xIndex, value) {
         for (let i=0; i<this.height; i++) {
-            this._grid[i].splice(xIndex, 0, value ?? null);
+            this._grid[i].splice(xIndex, 0, value ?? ' ');
         }
     }
 
@@ -383,6 +516,8 @@ class Grid {
     }
 
     dump() {
+        // Save some computation.
+        if (logging === false) return;
         log(`Grid(${this.width} x ${this.height})\n${this.toString()}`);
     }
 
@@ -460,4 +595,3 @@ class Grid {
         }
     }
 }
-
